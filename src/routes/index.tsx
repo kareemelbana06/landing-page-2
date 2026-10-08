@@ -20,9 +20,24 @@ type LandingPageCustomization = {
   buttonColor?: string;
   backgroundColor?: string;
   textColor?: string;
+  heroCarImage?: string;
+  heroBikeImage?: string;
+  carImage?: string;
+  bikeImage?: string;
   showImage?: boolean;
   showCTA?: boolean;
   showSection?: boolean;
+};
+
+const DEFAULT_IMAGE_URLS = {
+  heroCarImage:
+    "https://advbtkaazcgmyyteyulf.supabase.co/storage/v1/object/public/landing-images/landing-2/hero-car.webp",
+  heroBikeImage:
+    "https://advbtkaazcgmyyteyulf.supabase.co/storage/v1/object/public/landing-images/landing-2/hero-bike.webp",
+  carImage:
+    "https://advbtkaazcgmyyteyulf.supabase.co/storage/v1/object/public/landing-images/landing-2/car-driver.webp",
+  bikeImage:
+    "https://advbtkaazcgmyyteyulf.supabase.co/storage/v1/object/public/landing-images/landing-2/bike-courier.webp",
 };
 
 type LandingPageStyle = CSSProperties & {
@@ -67,6 +82,10 @@ function getLandingPageCustomization(value: unknown): LandingPageCustomization {
   const buttonColor = getSupportedColor(value["buttonColor"]);
   const backgroundColor = getSupportedColor(value["backgroundColor"]);
   const textColor = getSupportedColor(value["textColor"]);
+  const heroCarImage = getNonEmptyString(value["heroCarImage"]);
+  const heroBikeImage = getNonEmptyString(value["heroBikeImage"]);
+  const carImage = getNonEmptyString(value["carImage"]);
+  const bikeImage = getNonEmptyString(value["bikeImage"]);
 
   if (heroTitle) customization.heroTitle = heroTitle;
   if (heroDescription) customization.heroDescription = heroDescription;
@@ -75,11 +94,27 @@ function getLandingPageCustomization(value: unknown): LandingPageCustomization {
   if (buttonColor) customization.buttonColor = buttonColor;
   if (backgroundColor) customization.backgroundColor = backgroundColor;
   if (textColor) customization.textColor = textColor;
-  if (typeof value["showImage"] === "boolean") customization.showImage = value["showImage"];
-  if (typeof value["showCTA"] === "boolean") customization.showCTA = value["showCTA"];
-  if (typeof value["showSection"] === "boolean") customization.showSection = value["showSection"];
+  if (heroCarImage) customization.heroCarImage = heroCarImage;
+  if (heroBikeImage) customization.heroBikeImage = heroBikeImage;
+  if (carImage) customization.carImage = carImage;
+  if (bikeImage) customization.bikeImage = bikeImage;
+  if (typeof value["showImage"] === "boolean")
+    customization.showImage = value["showImage"];
+  if (typeof value["showCTA"] === "boolean")
+    customization.showCTA = value["showCTA"];
+  if (typeof value["showSection"] === "boolean")
+    customization.showSection = value["showSection"];
 
   return customization;
+}
+
+function getLandingImageUrl(customUrl: string | undefined, fileName: string) {
+  if (customUrl) return customUrl;
+
+  const { data } = getSupabaseClient()
+    .storage.from("landing-images")
+    .getPublicUrl(`landing-2/${fileName}`);
+  return data.publicUrl;
 }
 
 async function fetchLandingPage() {
@@ -98,11 +133,27 @@ async function fetchLandingPage() {
     inviteUrl.pathname.match(/\/invite\/([^/]+)\/?$/)?.[1] ??
     data.invite_code ??
     null;
+  const customization = getLandingPageCustomization(data.customization);
 
   return {
     inviteLink: data.invite_link,
     inviteCode,
-    customization: getLandingPageCustomization(data.customization),
+    customization: {
+      ...customization,
+      heroCarImage: getLandingImageUrl(
+        customization.heroCarImage,
+        "hero-car.webp",
+      ),
+      heroBikeImage: getLandingImageUrl(
+        customization.heroBikeImage,
+        "hero-bike.webp",
+      ),
+      carImage: getLandingImageUrl(customization.carImage, "car-driver.webp"),
+      bikeImage: getLandingImageUrl(
+        customization.bikeImage,
+        "bike-courier.webp",
+      ),
+    },
   };
 }
 
@@ -146,7 +197,9 @@ function Index(){
  const [showMobileCta,setShowMobileCta]=useState(false);
  const [inviteLink,setInviteLink]=useState<string | null>(null);
  const [inviteCode,setInviteCode]=useState<string | null>(null);
- const [customization,setCustomization]=useState<LandingPageCustomization>({});
+ const [customization,setCustomization]=useState<LandingPageCustomization>({
+  ...DEFAULT_IMAGE_URLS,
+ });
  const showCTA=customization.showCTA!==false;
  const showHeroImage=customization.showImage!==false;
  useEffect(()=>{
@@ -185,8 +238,8 @@ function Index(){
  return <main id="top" style={pageStyle}><Header inviteLink={inviteLink} showCTA={showCTA}/>
   <section className="intro hero">
     {showHeroImage&&<div className="hero-visual" aria-hidden="true">
-      <div className="hero-scene hero-scene-car"><img src="/images/hero-car.webp" alt="" /></div>
-      <div className="hero-scene hero-scene-bike"><img src="/images/hero-bike.webp" alt="" /></div>
+      <div className="hero-scene hero-scene-car"><img src={customization.heroCarImage} alt="" /></div>
+      <div className="hero-scene hero-scene-bike"><img src={customization.heroBikeImage} alt="" /></div>
       <span className="hero-tag hero-tag-car">01 / DRIVE</span>
       <span className="hero-tag hero-tag-bike">02 / DELIVER</span>
     </div>}
@@ -202,8 +255,8 @@ function Index(){
   {customization.showSection!==false&&<section id="paths" className="path-showcase shell" aria-labelledby="paths-title">
     <div className="section-label"><span>01</span><p>Choose your path</p><h2 id="paths-title">Two routes.<br/>One next step.</h2></div>
     <div className="path-options">
-      <a href={inviteLink ?? undefined} target="_blank" rel="noopener noreferrer" aria-disabled={!inviteLink} className="option option-car" aria-label="Open Uber signup to explore driving with a car" onClick={(event)=>{if(!inviteLink){event.preventDefault();return}trackSignupConversion()}}><img src="/images/car-driver.webp" alt="Modern car driving through an American city at night" width="1600" height="907" loading="lazy" decoding="async"/><div><span>Drive</span><h3>With your car</h3><p>Check the driving options and vehicle requirements for your location.</p><b>Continue to Uber signup <ArrowRight size={16}/></b></div></a>
-      <a href={inviteLink ?? undefined} target="_blank" rel="noopener noreferrer" aria-disabled={!inviteLink} className="option option-bike" aria-label="Open Uber signup to explore bike delivery" onClick={(event)=>{if(!inviteLink){event.preventDefault();return}trackSignupConversion()}}><img src="/images/bike-courier.webp" alt="Bike courier moving through an American city" width="1600" height="907" loading="lazy" decoding="async"/><div><span>Deliver</span><h3>With your bike</h3><p>Check bike delivery availability and requirements for your location.</p><b>Continue to Uber signup <ArrowRight size={16}/></b></div></a>
+      <a href={inviteLink ?? undefined} target="_blank" rel="noopener noreferrer" aria-disabled={!inviteLink} className="option option-car" aria-label="Open Uber signup to explore driving with a car" onClick={(event)=>{if(!inviteLink){event.preventDefault();return}trackSignupConversion()}}><img src={customization.carImage} alt="Modern car driving through an American city at night" width="1600" height="907" loading="lazy" decoding="async"/><div><span>Drive</span><h3>With your car</h3><p>Check the driving options and vehicle requirements for your location.</p><b>Continue to Uber signup <ArrowRight size={16}/></b></div></a>
+      <a href={inviteLink ?? undefined} target="_blank" rel="noopener noreferrer" aria-disabled={!inviteLink} className="option option-bike" aria-label="Open Uber signup to explore bike delivery" onClick={(event)=>{if(!inviteLink){event.preventDefault();return}trackSignupConversion()}}><img src={customization.bikeImage} alt="Bike courier moving through an American city" width="1600" height="907" loading="lazy" decoding="async"/><div><span>Deliver</span><h3>With your bike</h3><p>Check bike delivery availability and requirements for your location.</p><b>Continue to Uber signup <ArrowRight size={16}/></b></div></a>
     </div>
   </section>}
   <p className="signup-note shell"><ShieldCheck size={17} aria-hidden="true"/><span>Both options open Uber’s official signup with the referral code included. Choose your service and confirm local availability there.</span></p>
